@@ -83,7 +83,7 @@ export function GallerySection() {
           <EmptyState title="Зурган цомог тун удахгүй" subtitle="Студи зургаа байршуулмагц энд харагдана." />
         )}
 
-        <div className="columns-2 gap-4 sm:columns-3 lg:columns-4 [&>*]:mb-4">
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
           {gallery.map((img, i) => (
             <motion.button
               key={img.id}
@@ -92,13 +92,13 @@ export function GallerySection() {
               whileInView={{ opacity: 1, scale: 1 }}
               viewport={{ once: true, margin: "-40px" }}
               transition={{ duration: 0.4, delay: (i % 8) * 0.05 }}
-              className="group block w-full overflow-hidden rounded-2xl"
+              className="group block aspect-square w-full overflow-hidden rounded-2xl"
             >
               <img
                 src={optimizedUrl(img.image_url, 500)}
                 alt="Lash gallery"
                 loading="lazy"
-                className="w-full object-cover transition-transform duration-700 ease-out group-hover:scale-110"
+                className="h-full w-full object-cover transition-transform duration-700 ease-out group-hover:scale-110"
               />
             </motion.button>
           ))}
