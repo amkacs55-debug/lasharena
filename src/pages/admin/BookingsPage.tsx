@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
-import { listBookings, setBookingStatus, rescheduleBooking, getBookedTimesForDate, deleteBooking } from "@/lib/db";
+import { listBookings, setBookingStatus, rescheduleBooking, getBookedTimesForDate, deleteBooking, updateBooking } from "@/lib/db";
 import { useAppData } from "@/context/AppDataContext";
-import { Card, Badge, Input, Button, Spinner, EmptyState } from "@/components/ui/primitives";
+import { Card, Badge, Input, TextArea, Button, Spinner, EmptyState } from "@/components/ui/primitives";
 import { Modal } from "@/components/ui/Modal";
 import { formatMNT, formatPrettyDate, buildSlotsForDate, nextNDays, toDateKey } from "@/lib/utils";
 import type { Booking, BookingStatus } from "@/types";
@@ -29,6 +29,7 @@ export function BookingsPage() {
   const [rescheduleTarget, setRescheduleTarget] = useState<Booking | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Booking | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [editTarget, setEditTarget] = useState<Booking | null>(null);
 
   const refresh = () => listBookings().then(setBookings);
   useEffect(() => {
@@ -120,6 +121,9 @@ export function BookingsPage() {
                 <p className="mt-0.5 text-xs text-[#FF4FA0]">Advance paid: {formatMNT(b.advance_amount)}</p>
               </div>
               <div className="flex flex-wrap gap-2">
+                <Button size="sm" variant="ghost" onClick={() => setEditTarget(b)}>
+                  Edit
+                </Button>
                 {b.status === "confirmed" && (
                   <>
                     <Button size="sm" variant="outline" onClick={() => act(b.id, "completed")}>
@@ -165,7 +169,111 @@ export function BookingsPage() {
         onClose={() => setDeleteTarget(null)}
         onConfirm={confirmDelete}
       />
+
+      <EditModal
+        booking={editTarget}
+        onClose={() => setEditTarget(null)}
+        onDone={() => {
+          setEditTarget(null);
+          refresh();
+        }}
+      />
     </div>
+  );
+}
+
+function EditModal({
+  booking,
+  onClose,
+  onDone,
+}: {
+  booking: Booking | null;
+  onClose: () => void;
+  onDone: () => void;
+}) {
+  const [name, setName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [advance, setAdvance] = useState("");
+  const [notes, setNotes] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    if (booking) {
+      setName(booking.customer_name);
+      setPhone(booking.customer_phone);
+      setAdvance(String(booking.advance_amount ?? 0));
+      setNotes(booking.notes ?? "");
+      setError("");
+    }
+  }, [booking]);
+
+  if (!booking) return null;
+
+  const submit = async () => {
+    if (!name.trim() || !phone.trim()) {
+      setError("Name and phone are required.");
+      return;
+    }
+    setSaving(true);
+    try {
+      await updateBooking({
+        ...booking,
+        customer_name: name.trim(),
+        customer_phone: phone.trim(),
+        advance_amount: Number(advance) || 0,
+        notes: notes.trim() || undefined,
+      });
+      onDone();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to save changes");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Modal isOpen={!!booking} onClose={onClose} maxWidth="max-w-md">
+      <div className="p-6 sm:p-8">
+        <h3 className="font-display text-xl font-semibold text-white">Edit Booking</h3>
+        <p className="mt-1 text-sm text-white/50">{booking.service_title}</p>
+
+        <div className="mt-5 space-y-4">
+          <div>
+            <label className="text-xs font-medium text-white/50">Customer name</label>
+            <Input className="mt-1" value={name} onChange={(e) => setName(e.target.value)} />
+          </div>
+          <div>
+            <label className="text-xs font-medium text-white/50">Phone</label>
+            <Input className="mt-1" value={phone} onChange={(e) => setPhone(e.target.value)} />
+          </div>
+          <div>
+            <label className="text-xs font-medium text-white/50">Advance paid (₮)</label>
+            <Input
+              className="mt-1"
+              type="number"
+              value={advance}
+              onChange={(e) => setAdvance(e.target.value)}
+            />
+          </div>
+          <div>
+            <label className="text-xs font-medium text-white/50">Notes</label>
+            <TextArea className="mt-1" rows={3} value={notes} onChange={(e) => setNotes(e.target.value)} />
+          </div>
+        </div>
+
+        {error && <p className="mt-3 text-xs text-red-400">{error}</p>}
+
+        <div className="mt-6 flex gap-3">
+          <Button variant="ghost" className="flex-1" onClick={onClose} disabled={saving}>
+            Cancel
+          </Button>
+          <Button className="flex-1" onClick={submit} disabled={saving}>
+            {saving ? "Saving…" : "Save Changes"}
+          </Button>
+        </div>
+      </div>
+    </Modal>
   );
 }
 
@@ -297,3 +405,4 @@ function RescheduleModal({
     </Modal>
   );
 }
+
