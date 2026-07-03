@@ -176,6 +176,18 @@ export async function rescheduleBooking(bookingId: string, date: string, time: s
   }
 }
 
+export async function deleteBooking(bookingId: string): Promise<void> {
+  const all = localDb.getBookings();
+  const idx = all.findIndex((b) => b.id === bookingId);
+  if (idx >= 0) {
+    all.splice(idx, 1);
+    localDb.setBookings(all);
+  }
+  if (isSupabaseConfigured) {
+    await supabase!.from("bookings").delete().eq("id", bookingId);
+  }
+}
+
 // ---------- Payments ----------
 export async function createPayment(payment: Omit<Payment, "id" | "created_at">): Promise<Payment> {
   const item: Payment = { ...payment, id: uid(), created_at: new Date().toISOString() };
