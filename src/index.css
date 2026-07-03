@@ -1,0 +1,100 @@
+@import "tailwindcss";
+
+@theme {
+  --font-display: "Playfair Display", "Georgia", serif;
+  --font-body: "Manrope", "system-ui", sans-serif;
+
+  --color-bg: #0f0f0f;
+  --color-bg-soft: #161316;
+  --color-surface: #1a171a;
+  --color-pink: #ff4fa0;
+  --color-pink-soft: #ffc7dd;
+  --color-pink-dark: #d43c86;
+  --color-white: #ffffff;
+  --color-muted: #b8b8b8;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background-color: var(--color-bg);
+  color: var(--color-white);
+  font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3, h4, .font-display {
+  font-family: var(--font-display);
+}
+
+::selection {
+  background-color: var(--color-pink);
+  color: var(--color-white);
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: var(--color-bg);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-pink-dark);
+  border-radius: 999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-pink);
+}
+
+.text-gradient-pink {
+  background: linear-gradient(120deg, #ff4fa0, #ffc7dd 55%, #ff4fa0);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.glass-nav {
+  backdrop-filter: blur(18px) saturate(160%);
+  -webkit-backdrop-filter: blur(18px) saturate(160%);
+  background-color: rgba(15, 15, 15, 0.6);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.glass-card {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.02));
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.card-shadow {
+  box-shadow: 0 20px 50px -20px rgba(0, 0, 0, 0.6);
+}
+
+.glow-pink {
+  box-shadow: 0 0 0 rgba(255, 79, 160, 0);
+  transition: box-shadow 0.4s ease, transform 0.4s ease;
+}
+.glow-pink:hover {
+  box-shadow: 0 0 34px rgba(255, 79, 160, 0.45);
+}
+
+.section-pad {
+  padding-top: clamp(3.5rem, 6vw, 6rem);
+  padding-bottom: clamp(3.5rem, 6vw, 6rem);
+  scroll-margin-top: 84px;
+}
+
+.grain-overlay {
+  background-image: radial-gradient(circle at 20% 20%, rgba(255, 79, 160, 0.12), transparent 45%),
+    radial-gradient(circle at 80% 0%, rgba(255, 199, 221, 0.08), transparent 40%),
+    radial-gradient(circle at 50% 100%, rgba(255, 79, 160, 0.08), transparent 45%);
+}
+
+/* hide scrollbar for horizontal scrollers */
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
