@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { listBookings, setBookingStatus, rescheduleBooking, getBookedTimesForDate } from "@/lib/db";
+import { listBookings, setBookingStatus, rescheduleBooking, getBookedTimesForDate, deleteBooking } from "@/lib/db";
 import { useAppData } from "@/context/AppDataContext";
 import { Card, Badge, Input, Button, Spinner, EmptyState } from "@/components/ui/primitives";
 import { Modal } from "@/components/ui/Modal";
@@ -27,6 +27,8 @@ export function BookingsPage() {
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<BookingStatus | "all">("all");
   const [rescheduleTarget, setRescheduleTarget] = useState<Booking | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<Booking | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const refresh = () => listBookings().then(setBookings);
   useEffect(() => {
@@ -49,6 +51,18 @@ export function BookingsPage() {
   const act = async (id: string, status: BookingStatus) => {
     await setBookingStatus(id, status);
     refresh();
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    try {
+      await deleteBooking(deleteTarget.id);
+      setDeleteTarget(null);
+      refresh();
+    } finally {
+      setDeleting(false);
+    }
   };
 
   return (
@@ -124,6 +138,11 @@ export function BookingsPage() {
                     Cancel
                   </Button>
                 )}
+                {(b.status === "completed" || b.status === "cancelled") && (
+                  <Button size="sm" variant="danger" onClick={() => setDeleteTarget(b)}>
+                    Delete
+                  </Button>
+                )}
               </div>
             </Card>
           ))}
@@ -139,7 +158,47 @@ export function BookingsPage() {
         }}
         settings={settings}
       />
+
+      <DeleteConfirmModal
+        booking={deleteTarget}
+        loading={deleting}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={confirmDelete}
+      />
     </div>
+  );
+}
+
+function DeleteConfirmModal({
+  booking,
+  loading,
+  onClose,
+  onConfirm,
+}: {
+  booking: Booking | null;
+  loading: boolean;
+  onClose: () => void;
+  onConfirm: () => void;
+}) {
+  if (!booking) return null;
+  return (
+    <Modal isOpen={!!booking} onClose={onClose} maxWidth="max-w-sm">
+      <div className="p-6 sm:p-8">
+        <h3 className="font-display text-xl font-semibold text-white">Устгах уу?</h3>
+        <p className="mt-2 text-sm text-white/60">
+          {booking.customer_name} · {booking.service_title} захиалгыг устгахдаа итгэлтэй байна уу? Энэ үйлдлийг буцаах боломжгүй.
+        </p>
+
+        <div className="mt-6 flex gap-3">
+          <Button variant="ghost" className="flex-1" onClick={onClose} disabled={loading}>
+            Болих
+          </Button>
+          <Button variant="danger" className="flex-1" onClick={onConfirm} disabled={loading}>
+            {loading ? "Устгаж байна…" : "Устгах"}
+          </Button>
+        </div>
+      </div>
+    </Modal>
   );
 }
 
