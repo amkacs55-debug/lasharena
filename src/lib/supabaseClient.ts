@@ -18,3 +18,17 @@ export const supabase: SupabaseClient | null =
   url && anonKey ? createClient(url, anonKey) : null;
 
 export const isSupabaseConfigured = Boolean(supabase);
+
+// One-time diagnostic so misconfiguration is visible in DevTools console.
+if (typeof window !== "undefined") {
+  if (isSupabaseConfigured) {
+    // eslint-disable-next-line no-console
+    console.info("[supabase] Configured. URL:", url);
+  } else {
+    // eslint-disable-next-line no-console
+    console.warn(
+      "[supabase] NOT configured — falling back to localStorage. " +
+        `VITE_SUPABASE_URL present: ${Boolean(url)}, VITE_SUPABASE_ANON_KEY present: ${Boolean(anonKey)}`
+    );
+  }
+}
