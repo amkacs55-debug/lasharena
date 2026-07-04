@@ -21,6 +21,9 @@ const EMPTY: Omit<Service, "id" | "created_at"> = {
 export function ServicesPage() {
   const { services, refreshServices } = useAppData();
   const [editing, setEditing] = useState<Service | null | "new">(null);
+  const [deleteTarget, setDeleteTarget] = useState<Service | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const [error, setError] = useState("");
 
   const openNew = () =>
     setEditing({
@@ -30,15 +33,29 @@ export function ServicesPage() {
       sort_order: services.length,
     });
 
-  const remove = async (id: string) => {
-    if (!confirm("Delete this service?")) return;
-    await deleteService(id);
-    refreshServices();
+  const confirmDelete = async () => {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    setError("");
+    try {
+      await deleteService(deleteTarget.id);
+      setDeleteTarget(null);
+      await refreshServices();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to delete service.");
+    } finally {
+      setDeleting(false);
+    }
   };
 
   const toggleActive = async (s: Service) => {
-    await saveService({ ...s, is_active: !s.is_active });
-    refreshServices();
+    setError("");
+    try {
+      await saveService({ ...s, is_active: !s.is_active });
+      await refreshServices();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to update service.");
+    }
   };
 
   return (
@@ -52,6 +69,10 @@ export function ServicesPage() {
           + New Service
         </Button>
       </div>
+
+      {error && (
+        <p className="rounded-xl bg-red-500/10 px-4 py-3 text-sm text-red-400">{error}</p>
+      )}
 
       {services.length === 0 ? (
         <EmptyState title="No services yet" subtitle="Create your first service to get started." />
@@ -79,7 +100,7 @@ export function ServicesPage() {
                   <Button size="sm" variant="ghost" onClick={() => toggleActive(s)}>
                     {s.is_active ? "Deactivate" : "Activate"}
                   </Button>
-                  <Button size="sm" variant="danger" onClick={() => remove(s.id)}>
+                  <Button size="sm" variant="danger" onClick={() => setDeleteTarget(s)}>
                     Delete
                   </Button>
                 </div>
@@ -98,6 +119,23 @@ export function ServicesPage() {
           refreshServices();
         }}
       />
+
+      <Modal isOpen={!!deleteTarget} onClose={() => setDeleteTarget(null)} maxWidth="max-w-sm">
+        <div className="p-6 sm:p-8">
+          <h3 className="font-display text-xl font-semibold text-white">Устгах уу?</h3>
+          <p className="mt-2 text-sm text-white/60">
+            "{deleteTarget?.title}" үйлчилгээг устгахдаа итгэлтэй байна уу? Энэ үйлдлийг буцаах боломжгүй.
+          </p>
+          <div className="mt-6 flex gap-3">
+            <Button variant="ghost" className="flex-1" onClick={() => setDeleteTarget(null)} disabled={deleting}>
+              Болих
+            </Button>
+            <Button variant="danger" className="flex-1" onClick={confirmDelete} disabled={deleting}>
+              {deleting ? "Устгаж байна…" : "Устгах"}
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }
@@ -116,10 +154,13 @@ function ServiceFormModal({
   const [form, setForm] = useState<Service>(
     () => service ?? { ...EMPTY, id: uid(), created_at: new Date().toISOString() }
   );
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
 
   useEffect(() => {
     if (isOpen) {
       setForm(service ?? { ...EMPTY, id: uid(), created_at: new Date().toISOString() });
+      setError("");
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, service]);
@@ -130,8 +171,16 @@ function ServiceFormModal({
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    await saveService(form);
-    onSaved();
+    setSaving(true);
+    setError("");
+    try {
+      await saveService(form);
+      onSaved();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to save service.");
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -191,12 +240,14 @@ function ServiceFormModal({
           </label>
         </div>
 
+        {error && <p className="mt-3 text-xs text-red-400">{error}</p>}
+
         <div className="mt-7 flex gap-3">
-          <Button type="button" variant="ghost" className="flex-1" onClick={onClose}>
+          <Button type="button" variant="ghost" className="flex-1" onClick={onClose} disabled={saving}>
             Cancel
           </Button>
-          <Button type="submit" className="flex-1">
-            Save Service
+          <Button type="submit" className="flex-1" disabled={saving}>
+            {saving ? "Saving…" : "Save Service"}
           </Button>
         </div>
       </form>
