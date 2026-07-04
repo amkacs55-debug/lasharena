@@ -6,7 +6,6 @@ import { dayLabel } from "@/lib/utils";
 
 export function ContactSection() {
   const { settings } = useAppData();
-  const mapsHref = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(settings.address)}`;
 
   return (
     <section id="contact" className="section-pad bg-[#0F0F0F]">
@@ -66,11 +65,6 @@ export function ContactSection() {
                   <a href={settings.facebook_url} target="_blank" rel="noreferrer">
                     <Button variant="secondary" size="md">
                       Facebook
-                    </Button>
-                  </a>
-                  <a href={mapsHref} target="_blank" rel="noreferrer">
-                    <Button variant="outline" size="md">
-                      Google Maps-аар харах
                     </Button>
                   </a>
                 </div>
