@@ -11,6 +11,7 @@ export function SettingsPage() {
   const [form, setForm] = useState<Settings>(settings);
   const [saved, setSaved] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
 
   const update = (patch: Partial<Settings>) => setForm((f) => ({ ...f, ...patch }));
 
@@ -24,11 +25,14 @@ export function SettingsPage() {
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
+    setError("");
     try {
       await updateSettings(form);
       await refreshSettings();
       setSaved(true);
       setTimeout(() => setSaved(false), 2500);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to save settings. Please try again.");
     } finally {
       setSaving(false);
     }
@@ -45,6 +49,10 @@ export function SettingsPage() {
           {saving ? "Saving…" : saved ? "Saved ✓" : "Save Changes"}
         </Button>
       </div>
+
+      {error && (
+        <p className="rounded-xl bg-red-500/10 px-4 py-3 text-sm text-red-400">{error}</p>
+      )}
 
       <Card className="space-y-5 p-6 sm:p-8">
         <h2 className="font-display text-lg font-semibold text-white">Salon Identity</h2>
@@ -177,3 +185,4 @@ export function SettingsPage() {
     </form>
   );
 }
+
