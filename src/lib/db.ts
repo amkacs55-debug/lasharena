@@ -69,7 +69,8 @@ export async function listGallery(): Promise<GalleryImage[]> {
 export async function addGalleryImage(image: Omit<GalleryImage, "id" | "created_at">): Promise<GalleryImage> {
   const item: GalleryImage = { ...image, id: uid(), created_at: new Date().toISOString() };
   if (isSupabaseConfigured) {
-    await supabase!.from("gallery").insert(item);
+    const { error } = await supabase!.from("gallery").insert(item);
+    if (error) throw new Error(error.message);
   }
   localDb.setGallery([...localDb.getGallery(), item]);
   return item;
@@ -217,3 +218,4 @@ export async function listPayments(): Promise<Payment[]> {
   }
   return localDb.getPayments();
 }
+
