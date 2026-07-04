@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import { getCurrentSession, loginAdmin, logoutAdmin, type AdminSession } from "@/lib/auth";
+import { supabase, isSupabaseConfigured } from "@/lib/supabaseClient";
 
 interface AdminAuthContextValue {
   session: AdminSession | null;
@@ -15,8 +16,46 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    setSession(getCurrentSession());
-    setLoading(false);
+    let cancelled = false;
+
+    async function init() {
+      if (isSupabaseConfigured) {
+        // Trust the real Supabase auth session, not just the localStorage flag —
+        // if the Supabase session expired/failed to refresh, treat the admin as logged out
+        // so we don't silently send unauthenticated (anon) requests that RLS will reject.
+        const { data } = await supabase!.auth.getSession();
+        if (cancelled) return;
+        if (data.session) {
+          const local = getCurrentSession();
+          setSession(local ?? { email: data.session.user.email ?? "", name: (data.session.user.email ?? "").split("@")[0] });
+        } else {
+          setSession(null);
+          localStorage.removeItem("lumiere-lash:admin-session");
+        }
+      } else {
+        setSession(getCurrentSession());
+      }
+      setLoading(false);
+    }
+
+    init();
+
+    if (isSupabaseConfigured) {
+      const { data: listener } = supabase!.auth.onAuthStateChange((_event, newSession) => {
+        if (!newSession) {
+          setSession(null);
+          localStorage.removeItem("lumiere-lash:admin-session");
+        }
+      });
+      return () => {
+        cancelled = true;
+        listener.subscription.unsubscribe();
+      };
+    }
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const login = async (email: string, password: string) => {
