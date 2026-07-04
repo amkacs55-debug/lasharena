@@ -7,12 +7,24 @@ import type { Booking, GalleryImage, Payment, Service, Settings } from "@/types"
  * falls back to the localStorage store otherwise. All UI code depends only
  * on this module, so swapping in a live Supabase project later requires no
  * component changes.
+ *
+ * Every Supabase call logs its error to the console (prefixed "[db]") so
+ * misconfiguration (missing table, RLS policy, wrong env vars) is visible
+ * in DevTools instead of failing silently.
  */
+
+function logError(context: string, error: unknown) {
+  if (error) {
+    // eslint-disable-next-line no-console
+    console.error(`[db] ${context} failed:`, error);
+  }
+}
 
 // ---------- Settings ----------
 export async function getSettings(): Promise<Settings> {
   if (isSupabaseConfigured) {
-    const { data } = await supabase!.from("settings").select("*").single();
+    const { data, error } = await supabase!.from("settings").select("*").single();
+    logError("getSettings", error);
     if (data) return data as Settings;
   }
   return localDb.getSettings();
@@ -20,7 +32,9 @@ export async function getSettings(): Promise<Settings> {
 
 export async function updateSettings(settings: Settings): Promise<Settings> {
   if (isSupabaseConfigured) {
-    await supabase!.from("settings").upsert(settings);
+    const { error } = await supabase!.from("settings").upsert(settings);
+    logError("updateSettings", error);
+    if (error) throw new Error(error.message);
   }
   localDb.setSettings(settings);
   return settings;
@@ -31,7 +45,8 @@ export async function listServices(opts?: { activeOnly?: boolean }): Promise<Ser
   if (isSupabaseConfigured) {
     let q = supabase!.from("services").select("*").order("sort_order");
     if (opts?.activeOnly) q = q.eq("is_active", true);
-    const { data } = await q;
+    const { data, error } = await q;
+    logError("listServices", error);
     if (data) return data as Service[];
   }
   const all = localDb.getServices().sort((a, b) => a.sort_order - b.sort_order);
@@ -40,7 +55,9 @@ export async function listServices(opts?: { activeOnly?: boolean }): Promise<Ser
 
 export async function saveService(service: Service): Promise<Service> {
   if (isSupabaseConfigured) {
-    await supabase!.from("services").upsert(service);
+    const { error } = await supabase!.from("services").upsert(service);
+    logError("saveService", error);
+    if (error) throw new Error(error.message);
   }
   const all = localDb.getServices();
   const idx = all.findIndex((s) => s.id === service.id);
@@ -52,7 +69,9 @@ export async function saveService(service: Service): Promise<Service> {
 
 export async function deleteService(id: string): Promise<void> {
   if (isSupabaseConfigured) {
-    await supabase!.from("services").delete().eq("id", id);
+    const { error } = await supabase!.from("services").delete().eq("id", id);
+    logError("deleteService", error);
+    if (error) throw new Error(error.message);
   }
   localDb.setServices(localDb.getServices().filter((s) => s.id !== id));
 }
@@ -60,7 +79,8 @@ export async function deleteService(id: string): Promise<void> {
 // ---------- Gallery ----------
 export async function listGallery(): Promise<GalleryImage[]> {
   if (isSupabaseConfigured) {
-    const { data } = await supabase!.from("gallery").select("*").order("sort_order");
+    const { data, error } = await supabase!.from("gallery").select("*").order("sort_order");
+    logError("listGallery", error);
     if (data) return data as GalleryImage[];
   }
   return localDb.getGallery().sort((a, b) => a.sort_order - b.sort_order);
@@ -70,6 +90,7 @@ export async function addGalleryImage(image: Omit<GalleryImage, "id" | "created_
   const item: GalleryImage = { ...image, id: uid(), created_at: new Date().toISOString() };
   if (isSupabaseConfigured) {
     const { error } = await supabase!.from("gallery").insert(item);
+    logError("addGalleryImage", error);
     if (error) throw new Error(error.message);
   }
   localDb.setGallery([...localDb.getGallery(), item]);
@@ -78,14 +99,18 @@ export async function addGalleryImage(image: Omit<GalleryImage, "id" | "created_
 
 export async function deleteGalleryImage(id: string): Promise<void> {
   if (isSupabaseConfigured) {
-    await supabase!.from("gallery").delete().eq("id", id);
+    const { error } = await supabase!.from("gallery").delete().eq("id", id);
+    logError("deleteGalleryImage", error);
+    if (error) throw new Error(error.message);
   }
   localDb.setGallery(localDb.getGallery().filter((g) => g.id !== id));
 }
 
 export async function reorderGallery(images: GalleryImage[]): Promise<void> {
   if (isSupabaseConfigured) {
-    await supabase!.from("gallery").upsert(images);
+    const { error } = await supabase!.from("gallery").upsert(images);
+    logError("reorderGallery", error);
+    if (error) throw new Error(error.message);
   }
   localDb.setGallery(images);
 }
@@ -93,7 +118,8 @@ export async function reorderGallery(images: GalleryImage[]): Promise<void> {
 // ---------- Bookings ----------
 export async function listBookings(): Promise<Booking[]> {
   if (isSupabaseConfigured) {
-    const { data } = await supabase!.from("bookings").select("*").order("created_at", { ascending: false });
+    const { data, error } = await supabase!.from("bookings").select("*").order("created_at", { ascending: false });
+    logError("listBookings", error);
     if (data) return data as Booking[];
   }
   return [...localDb.getBookings()].sort((a, b) => b.created_at.localeCompare(a.created_at));
@@ -121,7 +147,9 @@ export async function createPendingBooking(
     created_at: new Date().toISOString(),
   };
   if (isSupabaseConfigured) {
-    await supabase!.from("bookings").insert(item);
+    const { error } = await supabase!.from("bookings").insert(item);
+    logError("createPendingBooking", error);
+    if (error) throw new Error(error.message);
   }
   localDb.setBookings([...localDb.getBookings(), item]);
   return item;
@@ -129,7 +157,9 @@ export async function createPendingBooking(
 
 export async function updateBooking(booking: Booking): Promise<Booking> {
   if (isSupabaseConfigured) {
-    await supabase!.from("bookings").upsert(booking);
+    const { error } = await supabase!.from("bookings").upsert(booking);
+    logError("updateBooking", error);
+    if (error) throw new Error(error.message);
   }
   const all = localDb.getBookings();
   const idx = all.findIndex((b) => b.id === booking.id);
@@ -146,7 +176,8 @@ export async function confirmBookingPaid(bookingId: string): Promise<Booking | n
   all[idx] = { ...all[idx], status: "confirmed" };
   localDb.setBookings(all);
   if (isSupabaseConfigured) {
-    await supabase!.from("bookings").update({ status: "confirmed" }).eq("id", bookingId);
+    const { error } = await supabase!.from("bookings").update({ status: "confirmed" }).eq("id", bookingId);
+    logError("confirmBookingPaid", error);
   }
   return all[idx];
 }
@@ -159,7 +190,9 @@ export async function setBookingStatus(bookingId: string, status: Booking["statu
     localDb.setBookings(all);
   }
   if (isSupabaseConfigured) {
-    await supabase!.from("bookings").update({ status }).eq("id", bookingId);
+    const { error } = await supabase!.from("bookings").update({ status }).eq("id", bookingId);
+    logError("setBookingStatus", error);
+    if (error) throw new Error(error.message);
   }
 }
 
@@ -173,7 +206,9 @@ export async function rescheduleBooking(bookingId: string, date: string, time: s
     localDb.setBookings(all);
   }
   if (isSupabaseConfigured) {
-    await supabase!.from("bookings").update({ date, time }).eq("id", bookingId);
+    const { error } = await supabase!.from("bookings").update({ date, time }).eq("id", bookingId);
+    logError("rescheduleBooking", error);
+    if (error) throw new Error(error.message);
   }
 }
 
@@ -185,7 +220,9 @@ export async function deleteBooking(bookingId: string): Promise<void> {
     localDb.setBookings(all);
   }
   if (isSupabaseConfigured) {
-    await supabase!.from("bookings").delete().eq("id", bookingId);
+    const { error } = await supabase!.from("bookings").delete().eq("id", bookingId);
+    logError("deleteBooking", error);
+    if (error) throw new Error(error.message);
   }
 }
 
@@ -193,7 +230,9 @@ export async function deleteBooking(bookingId: string): Promise<void> {
 export async function createPayment(payment: Omit<Payment, "id" | "created_at">): Promise<Payment> {
   const item: Payment = { ...payment, id: uid(), created_at: new Date().toISOString() };
   if (isSupabaseConfigured) {
-    await supabase!.from("payments").insert(item);
+    const { error } = await supabase!.from("payments").insert(item);
+    logError("createPayment", error);
+    if (error) throw new Error(error.message);
   }
   localDb.setPayments([...localDb.getPayments(), item]);
   return item;
@@ -206,16 +245,17 @@ export async function markPaymentPaid(invoiceId: string): Promise<Payment | null
   all[idx] = { ...all[idx], status: "paid", paid_at: new Date().toISOString() };
   localDb.setPayments(all);
   if (isSupabaseConfigured) {
-    await supabase!.from("payments").update({ status: "paid" }).eq("invoice_id", invoiceId);
+    const { error } = await supabase!.from("payments").update({ status: "paid" }).eq("invoice_id", invoiceId);
+    logError("markPaymentPaid", error);
   }
   return all[idx];
 }
 
 export async function listPayments(): Promise<Payment[]> {
   if (isSupabaseConfigured) {
-    const { data } = await supabase!.from("payments").select("*");
+    const { data, error } = await supabase!.from("payments").select("*");
+    logError("listPayments", error);
     if (data) return data as Payment[];
   }
   return localDb.getPayments();
 }
-
