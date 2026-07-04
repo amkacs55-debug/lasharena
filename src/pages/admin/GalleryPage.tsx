@@ -9,16 +9,20 @@ export function GalleryPage() {
   const inputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const [dragIndex, setDragIndex] = useState<number | null>(null);
+  const [error, setError] = useState("");
 
   const handleFiles = async (files: FileList | null) => {
     if (!files || files.length === 0) return;
     setUploading(true);
+    setError("");
     try {
       for (const file of Array.from(files)) {
         const { url, publicId } = await uploadImage(file);
         await addGalleryImage({ image_url: url, public_id: publicId, sort_order: gallery.length });
       }
       await refreshGallery();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Upload failed. Please try again.");
     } finally {
       setUploading(false);
       if (inputRef.current) inputRef.current.value = "";
@@ -61,6 +65,10 @@ export function GalleryPage() {
           onChange={(e) => handleFiles(e.target.files)}
         />
       </div>
+
+      {error && (
+        <p className="rounded-xl bg-red-500/10 px-4 py-3 text-sm text-red-400">{error}</p>
+      )}
 
       {gallery.length === 0 ? (
         <EmptyState title="No photos yet" subtitle="Upload your first gallery photo to showcase your work." />
