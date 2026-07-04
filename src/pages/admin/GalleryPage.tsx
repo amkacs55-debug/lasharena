@@ -31,8 +31,13 @@ export function GalleryPage() {
 
   const remove = async (id: string) => {
     if (!confirm("Delete this photo?")) return;
-    await deleteGalleryImage(id);
-    refreshGallery();
+    setError("");
+    try {
+      await deleteGalleryImage(id);
+      await refreshGallery();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Delete failed. Please try again.");
+    }
   };
 
   const onDrop = async (index: number) => {
