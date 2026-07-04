@@ -89,6 +89,9 @@ export async function listGallery(): Promise<GalleryImage[]> {
 export async function addGalleryImage(image: Omit<GalleryImage, "id" | "created_at">): Promise<GalleryImage> {
   const item: GalleryImage = { ...image, id: uid(), created_at: new Date().toISOString() };
   if (isSupabaseConfigured) {
+    const { data: sessionData } = await supabase!.auth.getSession();
+    // eslint-disable-next-line no-console
+    console.info("[db] addGalleryImage session:", sessionData.session ? "present" : "MISSING", sessionData.session?.user?.email);
     const { error } = await supabase!.from("gallery").insert(item);
     logError("addGalleryImage", error);
     if (error) throw new Error(error.message);
@@ -259,3 +262,4 @@ export async function listPayments(): Promise<Payment[]> {
   }
   return localDb.getPayments();
 }
+
